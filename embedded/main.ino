@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LED Controller</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #121212;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .container {
+      text-align: center;
+      padding: 2rem;
+      background: #1e1e1e;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      width: 90vw;
+      max-width: 400px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    input[type="color"] {
+      width: 100%;
+      height: 150px;
+      border: none;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      background: none;
+      cursor: pointer;
+    }
+
+    button {
+      padding: 1rem;
+      font-size: 1rem;
+      width: 100%;
+      background-color: #333;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background-color: #555;
+    }
+
+    .status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+
+    @media (min-width: 600px) {
+      input[type="color"] {
+        height: 100px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>LED Strip Controller</h1>
+    <input type="color" id="colorPicker" value="#ff0000">
+    <button onclick="sendColor()">Set Color</button>
+    <div class="status" id="statusMsg">Waiting…</div>
+  </div>
+
+  <script>
+    async function sendColor() {
+      const color = document.getElementById('colorPicker').value;
+      const status = document.getElementById('statusMsg');
+      try {
+        const res = await fetch('/color', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ color })
+        });
+
+        if (res.ok) {
+          status.textContent = `Set to ${color}`;
+        } else {
+          status.textContent = 'Failed to set color';
+        }
+      } catch (e) {
+        status.textContent = 'Connection error';
+      }
+    }
+  </script>
+</body>
+</html>
