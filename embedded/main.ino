@@ -1,110 +1,78 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LED Controller</title>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+#include <Wifi.h>
+#include <Webserver.h>
+#include <ArduinoJson.h>
+#include <FastLED.h>
 
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #121212;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
+//Config
+#define LED_PIN     5
+#define NUM_LEDS    //Number of LEDs you have on the strip
+#define BRIGHTNESS  128 //Max is about 255 for most of them
 
-    .container {
-      text-align: center;
-      padding: 2rem;
-      background: #1e1e1e;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-      width: 90vw;
-      max-width: 400px;
-    }
+const char* ssid = "WIFI_SSID";
+const char* password = "PASSWORD";
 
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
+//Global
+CRBG leds[NUM_LEDS];
+WebServer server(80);
 
-    input[type="color"] {
-      width: 100%;
-      height: 150px;
-      border: none;
-      border-radius: 8px;
-      margin-bottom: 1.5rem;
-      background: none;
-      cursor: pointer;
-    }
+String currentPattern = "off";
+unsigned long lastUpdate = 0;
+int chaseIndex = 0;
 
-    button {
-      padding: 1rem;
-      font-size: 1rem;
-      width: 100%;
-      background-color: #333;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.3s;
+//Wifi
+void connectWiFi(){
+    WiFi.beign(ssid, password);
+    Serial.print("Connecting to WiFi");
+    while (WiFi.status() != WL_CONNECTED){
+        Serial.print(".");
+        delay(500);
     }
+    Serial.println("\nConnected. IP: " + WiFi.localIP().toString());
+}
 
-    button:hover {
-      background-color: #555;
-    }
+//Handlers
+void handleColor(){
+    StaticJsonDocument<100> doc;
+    DeserializationError err = deserializationJson(doc, server.arg("plain"));
+    if (err){
+        server.send(400, "application/json", "{\"error\":\"Invalid JSON!!\"}"); //WHAT THE DUCKING, shitty
+        return;
+}
 
-    .status {
-      margin-top: 1rem;
-      font-size: 0.9rem;
-      color: #aaa;
-    }
+String hex = doc["color"];
+if (hex.length() != 7 || hex[0] != '#'){
+    server.send(400, "application/json", "{\"error\":\"Invalid color format\"}");
+    return;
+}
 
-    @media (min-width: 600px) {
-      input[type="color"] {
-        height: 100px;
-      }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>LED Strip Controller</h1>
-    <input type="color" id="colorPicker" value="#ff0000">
-    <button onclick="sendColor()">Set Color</button>
-    <div class="status" id="statusMsg">Waiting…</div>
-  </div>
+  int r = strtol(hex.substring(1, 3).c_str(), nullptr, 16);
+  int g  = strtol(hex.substring(3,5).c_str(), nullptr, 16);
+  int b = strtol(hex.substring(5, 7).c_str(), nullptr, 16);
 
-  <script>
-    async function sendColor() {
-      const color = document.getElementById('colorPicker').value;
-      const status = document.getElementById('statusMsg');
-      try {
-        const res = await fetch('/color', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ color })
-        });
+  fill_solid(leds, NUM_LEDS, CRBG(r,g,b));
+  FastLED.show();
 
-        if (res.ok) {
-          status.textContent = `Set to ${color}`;
-        } else {
-          status.textContent = 'Failed to set color';
-        }
-      } catch (e) {
-        status.textContent = 'Connection error';
-      }
-    }
-  </script>
-</body>
-</html>
+  void handlePattern(){
+      //Wanna do this in the future; Not required rn; Not much of a usecase at home.
+  }
+
+  //Setup. To Talk with my GoLang backend
+void setup(){
+  Serial.begin(115200);
+  FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);
+  FastLED.setBrightness(BRIGHTNESS);
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
+  FastLED.show();
+  
+  connectWiFi();
+
+  server.on("/color", HTTP_POST, handleColor);
+  server.begin();
+
+  Serial.println("Ready to Use!");
+}
+
+//handle loop
+void loop(){
+    server.handleClient(); //Ig
+}
