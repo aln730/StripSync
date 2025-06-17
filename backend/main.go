@@ -12,10 +12,6 @@ type ColorRequest struct {
 	Color string `json:"color"`
 }
 
-type PatternRequest struct {
-	Pattern string `json:"pattern"`
-}
-
 func setColorHandler(w http.ResponseWriter, r *http.Request) {
 	var req ColorRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
